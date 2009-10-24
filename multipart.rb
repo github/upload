@@ -10,65 +10,40 @@ require 'cgi'
 
 module Multipart
   class Post
-    # We have to pretend like we're a web browser...
-    USERAGENT = "Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en-us) AppleWebKit/523.10.6 (KHTML, like Gecko) Version/3.0.4 Safari/523.10.6"
-    BOUNDARY = "0123456789ABLEWASIEREISAWELBA9876543210"
-    CONTENT_TYPE = "multipart/form-data; boundary=#{ BOUNDARY }"
-    HEADER = { "Content-Type" => CONTENT_TYPE, "User-Agent" => USERAGENT }
+    attr_reader :content
 
-    def self.prepare_query(params)
+    def initialize(params)
       fp = []
       files = []
 
-      params.each do |k, v|
-        # Are we trying to make a file parameter?
+      params.each do |k,v|
         if v.respond_to?(:path) and v.respond_to?(:read) then
-          files.push(FileParam.new(k, v.path, v.read))
-        # We must be trying to make a regular parameter
+          filename = v.path
+          content = v.read
+          mime_type = MIME::Types.type_for(filename)[0] || MIME::Types["application/octet-stream"][0]
+          fp.push(prepare_param("Content-Type", mime_type.simplified))
+          files.push("Content-Disposition: form-data; name=\"#{CGI::escape(k)}\"; filename=\"#{ filename }\"\r\nContent-Type: #{ mime_type.simplified }\r\n\r\n#{ content }\r\n")
         else
-          fp.push(StringParam.new(k, v))
+          fp.push(prepare_param(k,v))
         end
       end
 
-      # Assemble the request body using the special multipart format
-      query = (fp + files).collect {|p| "--" + BOUNDARY + "\r\n" + p.to_multipart }.join("")  + "--" + BOUNDARY + "--"
-      return query, HEADER
-    end
-  end
-
-  private
-
-  # Formats a basic string key/value pair for inclusion with a multipart post
-  class StringParam
-    attr_accessor :k, :v
-
-    def initialize(k, v)
-      @k = k
-      @v = v
+      @content = "--#{boundry}\r\n" + (fp + files).join("--#{boundry}\r\n") + "--#{boundry}--"
     end
 
-    def to_multipart
-      return "Content-Disposition: form-data; name=\"#{CGI::escape(k)}\"\r\n\r\n#{v}\r\n"
-    end
-  end
-
-  # Formats the contents of a file or string for inclusion with a multipart
-  # form post
-  class FileParam
-    attr_accessor :k, :filename, :content
-
-    def initialize(k, filename, content)
-      @k = k
-      @filename = filename
-      @content = content
+    def prepare_param(k,v)
+      "Content-Disposition: form-data; name=\"#{CGI::escape(k)}\"\r\n\r\n#{v}\r\n"
     end
 
-    def to_multipart
-      # If we can tell the possible mime-type from the filename, use the
-      # first in the list; otherwise, use "application/octet-stream"
-      mime_type = MIME::Types.type_for(filename)[0] || MIME::Types["application/octet-stream"][0]
-      return "Content-Disposition: form-data; name=\"#{CGI::escape(k)}\"; filename=\"#{ filename }\"\r\n" +
-             "Content-Type: #{ mime_type.simplified }\r\n\r\n#{ content }\r\n"
+    def boundry
+      @boundry ||= "#{rand(1000000)}boundryofdoomydoom#{rand(1000000)}"
+    end
+
+    def headers
+      @headers ||= {
+        "Content-Type" => "multipart/form-data; boundary=#{boundry}",
+        "User-Agent" => "Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en-us) AppleWebKit/523.10.6 (KHTML, like Gecko) Version/3.0.4 Safari/523.10.6"
+      }
     end
   end
 end

@@ -4,13 +4,13 @@ require "form_poster"
 require 'net/https'
 require "rubygems"
 require 'xmlsimple'
-# require 'httparty'
 require "time"
 require "multipart"
 
 
 user  = `git config --global github.user`.strip
 token = `git config --global github.token`.strip
+raise "Cannot find login credentials" if user.empty? || token.empty?
 
 
 filename = "rand#{rand(10000000)}.zip"
@@ -21,6 +21,7 @@ filename = "rand#{rand(10000000)}.zip"
 raise "Target file does not exist" unless File.size?(filename)
 
 
+# Get the info we need from GitHub to post to S3
 url = URI.parse "https://github.com/"
 http = Net::HTTP.new url.host, url.port
 http.use_ssl = url.scheme == 'https'
@@ -37,64 +38,21 @@ date = res["Date"]
 data = XmlSimple.xml_in(res.body)
 
 
-# p RestClient.post('http://rest-test.heroku.com/',
-data, headers = Multipart::Post.prepare_query(
+# Prepare post to S3
+mp = Multipart::Post.new(
   "key" => "#{data["prefix"].first}#{filename}",
   "Filename" => filename,
   "policy" => data["policy"].first,
   "AWSAccessKeyId" => data["accesskeyid"].first,
-  'Content-Type' => 'application/octet-stream',
   "signature" => data["signature"].first,
   "acl" => data["acl"].first,
   "file" => File.new(filename),
   "success_action_status" => 201
 )
-puts data
 
+# Make form post now
 Net::HTTP.start("github.s3.amazonaws.com") do |http|
-  res = http.post("/", data, headers)
-  puts res.body
+  res = http.post("/", mp.content, mp.headers)
+  raise "File upload failed" unless res.class == Net::HTTPCreated
 end
 
-raise "HI!"
-
-
-mp.post("http://github.s3.amazonaws.com/")
-
-p RestClient.post('http://github.s3.amazonaws.com/',
-  "file" => File.new(filename),
-
-#Net::HTTP.start("github.s3.amazonaws.com") do |http|
-#  headers = {
-#    "Host" => "github.s3.amazonaws.com",
-    # 'Content-Type' => 'text/plain; charset=utf-8',
-    # 'Content-Length' => File.size(filename).to_s,
-    # 'Accept-Types' => 'text/*',
-    "Filename" => filename,
-    "key" => "#{data["prefix"].first}#{filename}",
-    "acl" => data["acl"].first,
-    'Content-Type' => 'application/octet-stream',
-    "policy" => data["policy"].first,
-    # "success_action_status" => "201",
-    "AWSAccessKeyId" => data["accesskeyid"].first,
-    "signature" => data["signature"].first
-#    "Authorization" => "AWS #{data["accesskeyid"].first}:#{data["signature"].first}",
-#    "x-amz-date" => date
-  )
-  # put_data = File.read(filename)
-  # response = http.send_request('PUT', "/#{data["prefix"].first}#{filename}", put_data, headers)
-  # puts "Response #{response.code} #{response.message}:\n#{response.body}"
-
-# res = File.open(filename, "rb") do |file|
-#   http.post_multipart("/", {
-#     # 'Accept-Types' => 'text/*',
-#     # :Filename => filename,
-#     :policy => data["policy"].first,
-#     # :success_action_status => 201,
-#     :key => "#{data["prefix"].first}#{filename}",
-#     :AWSAccessKeyId => data["accesskeyid"].first,
-#     :signature => data["signature"].first,
-#     :acl => data["acl"].first,
-#     :file => file
-#   })
-#end
