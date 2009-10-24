@@ -53,9 +53,8 @@ end
 
 
 def die(message, with_usage = false)
-  puts message
-  puts %Q|
-Usage: #{__FILE__} file_to_upload [repo]
+  puts "ERROR: #{message}"
+  puts %Q|Usage: #{__FILE__} file_to_upload [repo]
   file_to_upload: File to be uplaoded.
   repo: GitHub repo to upload to.  Ex: "tekkub/sandbox".  If omitted, the repo from `git remote show origin` will be used.| if with_usage
   exit 1
@@ -67,12 +66,8 @@ token = `git config --global github.token`.strip
 die "Cannot find login credentials" if user.empty? || token.empty?
 
 
-die("No file specified", true) unless filename = ARGV[0]
+die "No file specified", true unless filename = ARGV[0]
 die "Target file does not exist" unless File.size?(filename)
-
-filename = "rand#{rand(10000000)}.rb"
-`cp upload.rb #{filename}`
-# `cp LimeChat.app.zip #{filename}`
 
 
 repo = ARGV[1]
@@ -84,11 +79,16 @@ file = File.new(filename)
 mime_type = MIME::Types.type_for(filename)[0] || MIME::Types["application/octet-stream"][0]
 
 
-# Get the info we need from GitHub to post to S3
+# Check for conflict
 url = URI.parse "https://github.com/"
 http = Net::HTTP.new url.host, url.port
 http.use_ssl = url.scheme == 'https'
 http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+res = http.get("/#{repo}/downloads?login=#{user}&token=#{token}")
+die "File has already been uploaded" if res.body =~ /<td><a href="https?:\/\/s3.amazonaws.com\/github\/downloads\/#{repo.gsub(/\//, "\/")}\/#{filename}.+">#{filename}<\/a><\/td>/
+
+
+# Get the info we need from GitHub to post to S3
 res = http.post_form("/#{repo}/downloads", {
   :file_size => File.size(filename),
   :content_type => mime_type.simplified,
