@@ -6,6 +6,8 @@ require "rubygems"
 require 'xmlsimple'
 # require 'httparty'
 require "time"
+require "rest_client"
+
 
 user  = `git config --global github.user`.strip
 token = `git config --global github.token`.strip
@@ -32,26 +34,30 @@ date = res["Date"]
 p data = XmlSimple.xml_in(res.body)
 
 
-Net::HTTP.start("github.s3.amazonaws.com") do |http|
-  headers = {
-    "Host" => "github.s3.amazonaws.com",
+# p RestClient.post('http://rest-test.heroku.com/',
+p RestClient.post('http://github.s3.amazonaws.com/',
+  "file" => File.new(filename),
+
+#Net::HTTP.start("github.s3.amazonaws.com") do |http|
+#  headers = {
+#    "Host" => "github.s3.amazonaws.com",
     # 'Content-Type' => 'text/plain; charset=utf-8',
     # 'Content-Length' => File.size(filename).to_s,
     # 'Accept-Types' => 'text/*',
-    # "Filename" => filename,
+    "Filename" => filename,
     "key" => "#{data["prefix"].first}#{filename}",
     "acl" => data["acl"].first,
     'Content-Type' => 'application/octet-stream',
     "policy" => data["policy"].first,
     # "success_action_status" => "201",
     "AWSAccessKeyId" => data["accesskeyid"].first,
-    "signature" => data["signature"].first,
-    "Authorization" => "AWS #{data["accesskeyid"].first}:#{data["signature"].first}",
-    "x-amz-date" => date,
-  }
-  put_data = File.read(filename)
-  response = http.send_request('PUT', "/#{data["prefix"].first}#{filename}", put_data, headers)
-  puts "Response #{response.code} #{response.message}:\n#{response.body}"
+    "signature" => data["signature"].first
+#    "Authorization" => "AWS #{data["accesskeyid"].first}:#{data["signature"].first}",
+#    "x-amz-date" => date
+  )
+  # put_data = File.read(filename)
+  # response = http.send_request('PUT', "/#{data["prefix"].first}#{filename}", put_data, headers)
+  # puts "Response #{response.code} #{response.message}:\n#{response.body}"
 
 # res = File.open(filename, "rb") do |file|
 #   http.post_multipart("/", {
@@ -65,4 +71,4 @@ Net::HTTP.start("github.s3.amazonaws.com") do |http|
 #     :acl => data["acl"].first,
 #     :file => file
 #   })
-end
+#end
