@@ -6,14 +6,18 @@ require "rubygems"
 require 'xmlsimple'
 # require 'httparty'
 require "time"
-require "rest_client"
+require "multipart"
 
 
 user  = `git config --global github.user`.strip
 token = `git config --global github.token`.strip
 
 
-raise "No file specified" unless filename = ARGV[0]
+filename = "rand#{rand(10000000)}.zip"
+`cp upload.rb #{filename}`
+# `cp LimeChat.app.zip #{filename}`
+
+# raise "No file specified" unless filename = ARGV[0]
 raise "Target file does not exist" unless File.size?(filename)
 
 
@@ -29,12 +33,34 @@ res = http.post_form("/tekkub/github-upload/downloads", {
   :login => user,
   :token => token,
 })
-puts res.body
 date = res["Date"]
-p data = XmlSimple.xml_in(res.body)
+data = XmlSimple.xml_in(res.body)
 
 
 # p RestClient.post('http://rest-test.heroku.com/',
+data, headers = Multipart::Post.prepare_query(
+  "key" => "#{data["prefix"].first}#{filename}",
+  "Filename" => filename,
+  "policy" => data["policy"].first,
+  "AWSAccessKeyId" => data["accesskeyid"].first,
+  'Content-Type' => 'application/octet-stream',
+  "signature" => data["signature"].first,
+  "acl" => data["acl"].first,
+  "file" => File.new(filename),
+  "success_action_status" => 201
+)
+puts data
+
+Net::HTTP.start("github.s3.amazonaws.com") do |http|
+  res = http.post("/", data, headers)
+  puts res.body
+end
+
+raise "HI!"
+
+
+mp.post("http://github.s3.amazonaws.com/")
+
 p RestClient.post('http://github.s3.amazonaws.com/',
   "file" => File.new(filename),
 
