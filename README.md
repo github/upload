@@ -23,7 +23,7 @@ Install
 `github_upload` is most easily installed as a standalone script:
 
     $ curl -s http://github.com/github/upload/raw/master/upload.rb > ~/bin/github_upload
-    $ chmod 755 ~/bin/hub
+    $ chmod 755 ~/bin/github_upload
     $ gem install xml-simple mime-types
 
 Assuming `~/bin/` is in your `$PATH`, you just need to set your git config and you're ready to roll.
