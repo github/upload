@@ -55,7 +55,7 @@ end
 def die(message, with_usage = false)
   puts "ERROR: #{message}"
   puts %Q|Usage: #{__FILE__} file_to_upload [repo]
-  file_to_upload: File to be uplaoded.
+  file_to_upload: File to be uploaded.
   repo: GitHub repo to upload to.  Ex: "tekkub/sandbox".  If omitted, the repo from `git remote show origin` will be used.| if with_usage
   exit 1
 end
