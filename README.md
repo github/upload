@@ -22,7 +22,7 @@ Install
 
 `github_upload` is most easily installed as a standalone script:
 
-    $ curl -s http://github.com/github/upload/raw/master/upload.rb > ~/bin/github_upload
+    $ curl -s https://raw.github.com/github/upload/master/upload.rb > ~/bin/github_upload
     $ chmod 755 ~/bin/github_upload
     $ gem install xml-simple mime-types
 
