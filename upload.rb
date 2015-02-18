@@ -3,10 +3,9 @@
 require "net/http"
 require 'net/https'
 require "rubygems"
-require 'xmlsimple'
 require "time"
 require 'mime/types'
-
+require 'json'
 
 module Net
   class HTTP
@@ -99,7 +98,7 @@ res = http.post_form("/#{repo}/downloads", {
 })
 die "Repo not found" if res.class == Net::HTTPNotFound
 date = res["Date"]
-data = XmlSimple.xml_in(res.body)
+data = JSON.parse(res.body)
 die "Unable to authorize upload" if data["signature"].nil?
 
 
